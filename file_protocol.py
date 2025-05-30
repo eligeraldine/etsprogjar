@@ -29,7 +29,9 @@ class FileProtocol:
                 parts = string_datamasuk.split(" ", 1)
                 c_request = parts[0].strip().lower()
                 
-                if len(parts) > 1:
+                if len(parts) < 2:
+                    params = []
+                else:
                     if c_request == "upload": # ada case khusus untuk upload untuk manage large base64 content
                         filename_and_content = parts[1].split(" ", 1)
                         params = filename_and_content
@@ -40,8 +42,6 @@ class FileProtocol:
                         except Exception as e:
                             logging.warning(f"error parsing parameters with shlex: {str(e)}")
                             params = parts[1].split()
-                else:
-                    params = []
             
             logging.warning(f"request processing: {c_request} --> {len(params)} parameters")
 
