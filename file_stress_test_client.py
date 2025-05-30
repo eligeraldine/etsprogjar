@@ -18,7 +18,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("stress_test.log"),
+        logging.FileHandler("checking.log"),
         logging.StreamHandler()
     ]
 )
@@ -45,8 +45,8 @@ class StressTestClient:
             os.makedirs('downloads')
 
     def generate_testfile(self, size_mb):
-        filename = f"test_file_{size_mb}MB.bin" # format nama testfile
-        filepath = os.path.join('testfiles', filename)
+        filename=f"test_file_{size_mb}MB.bin" # format nama testfile
+        filepath=os.path.join('testfiles', filename)
         
         if os.path.exists(filepath) and os.path.getsize(filepath) == size_mb * 1024 * 1024:
             logging.info(f"Test file {filename} already exists with correct size")
@@ -56,7 +56,7 @@ class StressTestClient:
 
         with open(filepath, 'wb') as f:
             # Untuk menghindari memory issues
-            chunk_size = 1024 * 1024  
+            chunk_size=1024 * 1024  
             for _ in range(size_mb):
                 f.write(os.urandom(chunk_size))
         
@@ -64,18 +64,18 @@ class StressTestClient:
         return filepath
 
     def send_command(self, command_str=""):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Untuk large files
         sock.settimeout(600)
 
         try:
-            start_connect = time.time()
+            start_connect=time.time()
             sock.connect(self.server_address)
             connect_time = time.time() - start_connect
             logging.debug(f"Connection established in {connect_time:.2f}s")
             
             # Apabila file besar, command dikirim dalam chunk
-            chunks = [command_str[i:i+65536] for i in range(0, len(command_str), 65536)]
+            chunks=[command_str[i:i+65536] for i in range(0, len(command_str), 65536)]
             for chunk in chunks:
                 sock.sendall((chunk).encode())
             
@@ -86,7 +86,7 @@ class StressTestClient:
 
             while True:
                 try:
-                    data = sock.recv(1024*1024) 
+                    data=sock.recv(1024*1024) 
                     if data:
                         data_received += data.decode()
                         if "\r\n\r\n" in data_received:
@@ -98,8 +98,8 @@ class StressTestClient:
                     logging.error("Socket timeout when receiving data")
                     return {'status': 'ERROR', 'data': 'Socket timeout when receiving data'}
             
-            json_response = data_received.split("\r\n\r\n")[0]
-            result = json.loads(json_response)
+            json_response=data_received.split("\r\n\r\n")[0]
+            result=json.loads(json_response)
             return result
         
         except socket.timeout as e:
@@ -321,16 +321,19 @@ class StressTestClient:
                 except Exception as e:
                     logging.error(f"Worker failed with exception: {str(e)}")
         
+        success_count = sum(1 for r in all_results if r['status'] == 'OK')
+        fail_count    = len(all_results) - success_count
+        
         # Menghitung durasi dan throughputs
         durations = [r['duration'] for r in all_results if r['status'] == 'OK']
         throughputs = [r['throughput'] for r in all_results if r.get('throughput', 0) > 0]
         
-        if not durations:
-            logging.warning("There is no successful operations")
-            return {
-                'operation': operation, 'file_size_mb': file_size_mb, 'client_pool_size': client_pool_size,
-                'executor_type': executor_type, 'success_count': self.success_count[operation], 'fail_count': self.fail_count[operation]
-            }
+        # if not durations:
+        #    logging.warning("There is no successful operations")
+        #    return {
+        #        'operation': operation, 'file_size_mb': file_size_mb, 'client_pool_size': client_pool_size,
+        #        'executor_type': executor_type, 'success_count': self.success_count[operation], 'fail_count': self.fail_count[operation]
+        #    }
         
         stats = {
             'operation': operation,
@@ -339,8 +342,8 @@ class StressTestClient:
             'executor_type': executor_type,
             'avg_duration': statistics.mean(durations) if durations else 0,
             'avg_throughput': statistics.mean(throughputs) if throughputs else 0,
-            'success_count': self.success_count[operation],
-            'fail_count': self.fail_count[operation]
+            'success_count': success_count,
+            'fail_count': fail_count
         }
         
         logging.info(f"Test complete: {stats['success_count']} succeeded, {stats['fail_count']} failed")
@@ -367,7 +370,7 @@ class StressTestClient:
                                 all_stats.append(stats)
         
         self.save_csv(all_stats) # save hasilnya ke csv
-        
+    
     def save_csv(self, all_stats):
         timestamp = time.strftime("%Y%m%d-%H%M%S")
         csv_filename = f"stress_test_{timestamp}.csv"
@@ -383,6 +386,9 @@ class StressTestClient:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             
             writer.writeheader()
+            total_success = 0
+            total_fail = 0
+
             for i, stats in enumerate(all_stats, start=1):
                 stats_with_number = {
                     'Nomor': i,
@@ -396,10 +402,20 @@ class StressTestClient:
                     'Jumlah Worker Gagal': stats['fail_count'],
                     'Executor Type': stats['executor_type']
                 }
+                total_success += stats['success_count']
+                total_fail += stats['fail_count']
                 writer.writerow(stats_with_number)
-        
+
+            # Tambahkan ringkasan total di akhir
+            writer.writerow({
+                'Nomor': 'TOTAL',
+                'Jumlah Worker Sukses': total_success,
+                'Jumlah Worker Gagal': total_fail
+            })
+
         logging.info(f"Results already saved to {csv_filename}")
         return csv_filename
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='File Server Stress Test Client')
