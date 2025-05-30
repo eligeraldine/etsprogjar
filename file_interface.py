@@ -30,12 +30,14 @@ class FileInterface:
         try:
             if len(params) < 2:
                 return dict(status='ERROR', data='Parameter tidak cocok, karena kurang')
+            
             filename = params[0]
             isifile = base64.b64decode(params[1])
 
             with open(filename, 'wb') as fp:
                 fp.write(isifile)
             return dict(status='OK', data='File uploaded successfully')
+        
         except Exception as e:
             return dict(status='ERROR', data=str(e))
     
@@ -48,6 +50,7 @@ class FileInterface:
             if os.path.exists(filename):
                 os.remove(filename)
                 return dict(status='OK', data='File deleted successfully')
+            
             else:
                 return dict(status='ERROR', data='File not found')
         
